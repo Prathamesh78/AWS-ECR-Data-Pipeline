@@ -20,7 +20,7 @@ pipeline {
         stage('Push to ECR') {
             steps {
                 script {
-                    docker.withRegistry('https://your-aws-account-id.dkr.ecr.your-region.amazonaws.com', 'ecr:aws-credentials') {
+                    docker.withRegistry('https://891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-data-pipeline', 'ecr:aws-credentials') {
                         dockerImage.push('latest')
                     }
                 }
