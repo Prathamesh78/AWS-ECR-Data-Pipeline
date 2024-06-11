@@ -13,11 +13,11 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-ecr-pipeline")
+                    dockerImage = docker.build("aws-data-pipeline")
                 }
             }
         }
-       stage('Push to ECR') {
+        stage('Tag and Push to ECR') {
             steps {
                 script {
                     withCredentials([
@@ -26,6 +26,7 @@ pipeline {
                     ]) {
                         sh '''
                             aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 891377100011.dkr.ecr.us-east-1.amazonaws.com
+                            docker tag aws-data-pipeline:latest 891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-data-pipeline:latest
                             docker push 891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-data-pipeline:latest
                         '''
                     }
