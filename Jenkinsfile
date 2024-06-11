@@ -17,17 +17,18 @@ pipeline {
                 }
             }
         }
-        stage('Push to ECR') {
+       stage('Push to ECR') {
             steps {
-                script {
+               script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-access-key-id', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-                        docker.withRegistry('https://891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-data-pipeline', 'aws-credentials') {
-                            dockerImage.push('latest')
-                    
+                    docker.withRegistry('https://891377100011.dkr.ecr.us-east-1.amazonaws.com', 'aws-credentials') {
+                        dockerImage.push('latest')
+                        }
                     }
                 }
             }
         }
+
         stage('Terraform Init') {
             steps {
                 sh 'terraform init'
