@@ -13,7 +13,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("AWS-ECR-Data-Pipeline")
+                    dockerImage = docker.build("891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-ecr-pipeline")
                 }
             }
         }
