@@ -17,19 +17,14 @@ pipeline {
                 }
             }
         }
-        stage('Tag and Push to ECR') {
+        stage('Tag and Push to Public ECR') {
             steps {
                 script {
-                    withCredentials([
-                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
-                        sh '''
-                            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 891377100011.dkr.ecr.us-east-1.amazonaws.com
-                            docker tag aws-data-pipeline:latest 891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-data-pipeline:latest
-                            docker push 891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-data-pipeline:latest
-                        '''
-                    }
+                    sh '''
+                        aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+                        docker tag aws-data-pipeline:latest public.ecr.aws/g2b9q7n9/aws-data-pipeline:latest
+                        docker push public.ecr.aws/g2b9q7n9/aws-data-pipeline:latest
+                    '''
                 }
             }
         }
