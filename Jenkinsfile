@@ -24,21 +24,32 @@ pipeline {
                         string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
                         string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
                     ]) {
-                        sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 891377100011.dkr.ecr.us-east-1.amazonaws.com'
-                        dockerImage.push('latest')
+                        sh '''
+                            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 891377100011.dkr.ecr.us-east-1.amazonaws.com
+                            docker push 891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-data-pipeline:latest
+                        '''
                     }
                 }
             }
         }
-
         stage('Terraform Init') {
             steps {
-                sh 'terraform init'
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh 'terraform init'
+                }
             }
         }
         stage('Terraform Apply') {
             steps {
-                sh 'terraform apply -auto-approve'
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh 'terraform apply -auto-approve'
+                }
             }
         }
     }
