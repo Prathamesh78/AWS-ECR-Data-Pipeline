@@ -10,7 +10,7 @@ resource "aws_lambda_function" "function" {
   function_name = "aws-data-pipeline-function"
   role          = aws_iam_role.iam_for_lambda.arn
   handler       = "app.main"
-  image_uri     = "your-aws-account-id.dkr.ecr.your-region.amazonaws.com/aws-data-pipeline:latest"
+  image_uri     = "891377100011.dkr.ecr.us-east-1.amazonaws.com/aws-data-pipeline:latest"
 }
 
 resource "aws_iam_role" "iam_for_lambda" {
