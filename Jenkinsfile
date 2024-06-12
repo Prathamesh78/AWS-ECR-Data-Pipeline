@@ -21,10 +21,24 @@ pipeline {
             }
         }
 
+        stage('Terraform Plan') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform plan -out=tfplan'
+                }
+            }
+        }
+
+        stage('Manual Approval') {
+            steps {
+                input 'Do you want to apply the Terraform changes?'
+            }
+        }
+
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
-                    sh 'terraform apply -auto-approve'
+                    sh 'terraform apply -parallelism=10 -auto-approve tfplan'
                 }
             }
         }
