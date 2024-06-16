@@ -1,21 +1,35 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'autoApprove', defaultValue: false, description: 'Automatically run apply after generating plan?')
+    }
+
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        AWS_ACCOUNT_ID        = "891377100011"
+        AWS_DEFAULT_REGION    = "us-east-1"
+        ECR_REPO_NAME         = "s3-to-rds"
+        IMAGE_TAG             = "latest"
+        REPOSITORY_URL        = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPO_NAME}"
+        DB_USER               = "admin"  
+        DB_PASSWORD           = "Passw0rd!7810"
+        DB_NAME               = "mydatabase"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git credentialsId: 'github-credentials', url: 'https://github.com/Prathamesh78/AWS-ECR-Data-Pipeline.git', branch: 'main'
+                script {
+                    git branch: 'main', url: 'https://github.com/Prathamesh78/AWS-Data_Pipeline.git'
+                }
             }
         }
 
         stage('Terraform Init') {
             steps {
-                dir('terraform') {
+                script {
                     sh 'terraform init'
                 }
             }
@@ -23,50 +37,138 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-                dir('terraform') {
+                script {
                     sh 'terraform plan -out=tfplan'
+                    sh 'terraform show -no-color tfplan > tfplan.txt'
                 }
             }
         }
 
-        stage('Manual Approval') {
+        stage('Approval') {
+            when {
+                not {
+                    equals expected: true, actual: params.autoApprove
+                }
+            }
+
             steps {
-                input 'Do you want to apply the Terraform changes?'
+                script {
+                    def plan = readFile 'tfplan.txt'
+                    input message: "Do you want to apply the plan?",
+                          parameters: [text(name: 'Plan', description: 'Please review the plan', defaultValue: plan)]
+                }
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                dir('terraform') {
-                    sh 'terraform apply -parallelism=10 -auto-approve tfplan'
+                script {
+                    sh 'terraform apply -input=false tfplan'
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Fetch DB Host') {
             steps {
                 script {
-                    dockerImage = docker.build("aws-data-pipeline")
+                    def rdsEndpoint = sh(script: 'terraform output -raw rds_endpoint', returnStdout: true).trim()
+                    def rdsHost = rdsEndpoint.split(':')[0]
+                    env.DB_HOST = rdsHost
+                    echo "DB_HOST: ${env.DB_HOST}"
                 }
             }
         }
 
-        stage('Tag and Push to ECR') {
+        stage('Logging into AWS ECR') {
             steps {
                 script {
-                    sh '''
-                        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
-                        docker tag aws-data-pipeline:latest public.ecr.aws/g2b9q7n9/aws-data-pipeline:latest
-                        docker push public.ecr.aws/g2b9q7n9/aws-data-pipeline:latest
-                    '''
+                    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URL'
+                }
+            }
+        }
+
+        stage('Building Images') {
+            steps {
+                script {
+                    dockerImage = docker.build("${ECR_REPO_NAME}:${IMAGE_TAG}")
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                script {
+                    sh "docker tag ${ECR_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URL}:${IMAGE_TAG}"
+                    sh "docker push ${REPOSITORY_URL}:${IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Create Database') {
+            steps {
+                script {
+                    sh """
+                    mysql -h ${env.DB_HOST} -u ${DB_USER} -p${DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+                    """
+                }
+            }
+        }
+
+        stage('Create Table') {
+            steps {
+                script {
+                    sh """
+                    mysql -h ${env.DB_HOST} -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME} -e "
+                    CREATE TABLE IF NOT EXISTS customers (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        city VARCHAR(255),
+                        country VARCHAR(255)
+                    );
+                    "
+                    """
+                }
+            }
+        }
+
+        stage('Create Lambda Function') {
+            steps {
+                script {
+                    sh """
+                    aws lambda create-function \
+                        --function-name s3-rds-function \
+                        --package-type Image \
+                        --code ImageUri=${REPOSITORY_URL}:${IMAGE_TAG} \
+                        --role arn:aws:iam::891377100011:role/lambda_exec_role \
+                        --region ${AWS_DEFAULT_REGION}
+                    """
+                }
+            }
+        }
+
+            stage('Test Lambda Function') {
+            steps {
+                script {
+                    sh """
+                    aws lambda invoke \
+                        --function-name s3-rds-function \
+                        --payload '{}' \
+                        output.json
+                    """
+                    def output = readFile 'output.json'
+                    echo "Lambda output: ${output}"
                 }
             }
         }
     }
-
     post {
         always {
             cleanWs()
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
