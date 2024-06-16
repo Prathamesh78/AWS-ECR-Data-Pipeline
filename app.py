@@ -1,50 +1,51 @@
 import boto3
-import pymysql
+import pandas as pd
+import psycopg2
 import os
 
-s3 = boto3.client('s3')
-rds = boto3.client('rds')
-glue = boto3.client('glue')
+# AWS Credentials
+aws_access_key_id = os.environ['AWS_ACCESS_KEY_ID']
+aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY']
+aws_region = os.environ['AWS_REGION']
+s3_bucket = os.environ['S3_BUCKET']
+s3_key = os.environ['S3_KEY']
 
-def read_from_s3(bucket_name, key):
-    obj = s3.get_object(Bucket=bucket_name, Key=key)
-    data = obj['Body'].read().decode('utf-8')
-    return data
+# RDS Credentials
+rds_host = os.environ['RDS_HOST']
+rds_port = os.environ['RDS_PORT']
+rds_user = os.environ['RDS_USER']
+rds_password = os.environ['RDS_PASSWORD']
+rds_db = os.environ['RDS_DB']
+rds_table = os.environ['RDS_TABLE']
 
-def push_to_rds(data):
-    try:
-        connection = pymysql.connect(
-            host=os.getenv('RDS_HOST'),
-            user=os.getenv('RDS_USER'),
-            password=os.getenv('RDS_PASSWORD'),
-            db=os.getenv('RDS_DB')
-        )
-        with connection.cursor() as cursor:
-            cursor.execute("INSERT INTO your_table (column_name) VALUES (%s)", (data,))
-        connection.commit()
-    except Exception as e:
-        print(f"Error: {e}")
-        return False
-    finally:
-        connection.close()
-    return True
+# Initialize S3 client
+s3_client = boto3.client('s3', 
+                         aws_access_key_id=aws_access_key_id, 
+                         aws_secret_access_key=aws_secret_access_key, 
+                         region_name=aws_region)
 
-def push_to_glue(data):
-    try:
-        # Add your Glue logic here
-        pass
-    except Exception as e:
-        print(f"Error: {e}")
-        return False
-    return True
+# Download file from S3
+s3_client.download_file(s3_bucket, s3_key, '/tmp/data.csv')
 
-def main():
-    bucket_name = os.getenv('S3_BUCKET')
-    key = os.getenv('S3_KEY')
+# Load data into pandas DataFrame
+df = pd.read_csv('/tmp/data.csv')
 
-    data = read_from_s3(bucket_name, key)
-    if not push_to_rds(data):
-        push_to_glue(data)
+# Connect to RDS
+conn = psycopg2.connect(
+    host=rds_host,
+    port=rds_port,
+    user=rds_user,
+    password=rds_password,
+    dbname=rds_db
+)
+cur = conn.cursor()
 
-if __name__ == "__main__":
-    main()
+# Insert data into RDS table
+for index, row in df.iterrows():
+    cur.execute(f"INSERT INTO {rds_table} (column1, column2, ...) VALUES (%s, %s, ...)", tuple(row))
+
+conn.commit()
+cur.close()
+conn.close()
+
+print("Data transferred successfully!")
