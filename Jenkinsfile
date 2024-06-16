@@ -22,7 +22,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    git branch: 'main', url: 'https://github.com/Prathamesh78/AWS-Data_Pipeline.git'
+                    git branch: 'main', url: 'https://github.com/Prathamesh78/AWS-ECR-Data-Pipeline.git'
                 }
             }
         }
