@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from sqlalchemy import create_engine
-
+import s3fs
 
 def s3_to_df():
     """
