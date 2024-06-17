@@ -13,8 +13,6 @@ pipeline {
         ECR_REPO_NAME         = "s3-to-rds"
         IMAGE_TAG             = "latest"
         REPOSITORY_URL        = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPO_NAME}"
-        DB_USER               = "admin"  
-        DB_PASSWORD           = "Passw0rd!7810"
         DB_NAME               = "mydatabase"
     }
 
@@ -22,7 +20,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    git branch: 'main', url: 'https://github.com/Prathamesh78/AWS-ECR-Data-Pipeline.git'
+                    git branch: 'main', url: 'https://github.com/Prathamesh78/AWS-Data_Pipeline.git'
                 }
             }
         }
@@ -68,13 +66,24 @@ pipeline {
             }
         }
 
-        stage('Fetch DB Host') {
+        stage('Fetch DB Credentials and S3 URI') {
             steps {
                 script {
                     def rdsEndpoint = sh(script: 'terraform output -raw rds_endpoint', returnStdout: true).trim()
                     def rdsHost = rdsEndpoint.split(':')[0]
                     env.DB_HOST = rdsHost
+
+                    env.DB_USER = sh(script: 'terraform output -raw rds_username', returnStdout: true).trim()
+                    env.DB_PASSWORD = sh(script: 'terraform output -raw rds_password', returnStdout: true).trim()
+
+                    def s3Bucket = sh(script: 'terraform output -raw s3_bucket_name', returnStdout: true).trim()
+                    def s3Uri = "s3://${s3Bucket}/customers.csv"
+                    env.S3_URI = s3Uri
+
                     echo "DB_HOST: ${env.DB_HOST}"
+                    echo "DB_USER: ${env.DB_USER}"
+                    echo "DB_PASSWORD: ${env.DB_PASSWORD}"
+                    echo "S3_URI: ${env.S3_URI}"
                 }
             }
         }
@@ -87,10 +96,11 @@ pipeline {
             }
         }
 
-        stage('Building Images') {
+        stage('Building Image') {
             steps {
                 script {
-                    dockerImage = docker.build("${ECR_REPO_NAME}:${IMAGE_TAG}")
+                    dockerImage = docker.build("${ECR_REPO_NAME}:${IMAGE_TAG}", 
+                        "--build-arg S3_URI=${env.S3_URI} --build-arg SQL_HOST=${env.DB_HOST} --build-arg SQL_USER=${env.DB_USER} --build-arg SQL_PASSWORD=${env.DB_PASSWORD}")
                 }
             }
         }
@@ -108,7 +118,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    mysql -h ${env.DB_HOST} -u ${DB_USER} -p${DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+                    mysql -h ${env.DB_HOST} -u ${env.DB_USER} -p${env.DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
                     """
                 }
             }
@@ -118,7 +128,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    mysql -h ${env.DB_HOST} -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME} -e "
+                    mysql -h ${env.DB_HOST} -u ${env.DB_USER} -p${env.DB_PASSWORD} ${DB_NAME} -e "
                     CREATE TABLE IF NOT EXISTS customers (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         city VARCHAR(255),
@@ -145,7 +155,7 @@ pipeline {
             }
         }
 
-            stage('Test Lambda Function') {
+        stage('Test Lambda Function') {
             steps {
                 script {
                     sh """
@@ -160,6 +170,7 @@ pipeline {
             }
         }
     }
+
     post {
         always {
             cleanWs()
