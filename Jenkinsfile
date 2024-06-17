@@ -100,7 +100,7 @@ pipeline {
             steps {
                 script {
                     dockerImage = docker.build("${ECR_REPO_NAME}:${IMAGE_TAG}", 
-                        "--build-arg S3_URI=${env.S3_URI} --build-arg SQL_HOST=${env.DB_HOST} --build-arg SQL_USER=${env.DB_USER} --build-arg SQL_PASSWORD=${env.DB_PASSWORD}")
+                        "--build-arg S3_URI=${env.S3_URI} --build-arg SQL_HOST=${env.DB_HOST} --build-arg SQL_USER=${env.DB_USER} --build-arg SQL_PASSWORD=${env.DB_PASSWORD} .")
                 }
             }
         }
