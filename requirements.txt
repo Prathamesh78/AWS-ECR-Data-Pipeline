@@ -3,3 +3,4 @@ pymysql
 pandas
 psycopg2-binary
 sqlalchemy
+s3fs
