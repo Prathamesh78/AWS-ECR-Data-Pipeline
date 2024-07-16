@@ -20,7 +20,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    git branch: 'main', url: 'https://github.com/Prathamesh78/AWS-Data_Pipeline.git'
+                    git branch: 'main', url: 'https://github.com/Prathamesh78/AWS-ECR-Data-Pipeline.git'
                 }
             }
         }
@@ -140,7 +140,7 @@ pipeline {
             }
         }
 
-        stage('Create ECS') {
+        stage('Create ECS Task Definition') {
             steps {
                 script {
                     sh "aws ecs register-task-definition --region $AWS_DEFAULT_REGION --cli-input-json file://task_definition.json"
