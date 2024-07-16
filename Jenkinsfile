@@ -143,7 +143,7 @@ pipeline {
         stage('Create ECS') {
             steps {
                 script {
-                    sh "aws ecs register-task-definition --region $AWS_DEFAULT_REGION --cli-input-json task_definition.json"
+                    sh "aws ecs register-task-definition --region $AWS_DEFAULT_REGION --cli-input-json file://task_definition.json"
                 }
             }
         }
