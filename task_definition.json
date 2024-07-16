@@ -1,0 +1,30 @@
+{
+  "family": "s3-to-rds-mysql-pandas-td",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::891377100011:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::891377100011:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "s3-to-rds-container",
+      "image": "891377100011.dkr.ecr.us-east-1.amazonaws.com/s3-to-rds:latest",
+      "essential": true,
+      "environment": [
+        {
+          "name": "ENV_VAR_NAME",
+          "value": "value"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/s3-to-rds-mysql-pandas-td",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
