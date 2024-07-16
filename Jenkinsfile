@@ -140,6 +140,14 @@ pipeline {
             }
         }
 
+        stage('Create ECS') {
+            steps {
+                script {
+                    sh "aws ecs register-task-definition --cli-input-json file://task_definition.json"
+                }
+            }
+        }
+        
         stage('Create Lambda Function') {
             steps {
                 script {
