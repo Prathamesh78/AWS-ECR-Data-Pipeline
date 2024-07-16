@@ -41,6 +41,10 @@ resource "aws_ecr_repository" "repo" {
   }
 }
 
+resource "aws_ecs_cluster" "ecs_cluster" {
+  name = "prathamesh-ecs-cluster"
+}
+
 output "s3_bucket_name" {
   value = aws_s3_bucket.bucket.bucket
 }
@@ -66,6 +70,13 @@ output "ecr_repository_url" {
   value = aws_ecr_repository.repo.repository_url
 }
 
+output "ecs_cluster_id" {
+  value = aws_ecs_cluster.ecs_cluster.id
+}
+
+output "ecs_cluster_arn" {
+  value = aws_ecs_cluster.ecs_cluster.arn
+}
 variable "dbstorage" {
   default = 20
 }
